@@ -1,0 +1,165 @@
+---
+title: "Modified ALCC"
+author: "Adrian A. Correndo"
+date: "10/14/2020"
+contact : "correndo@agro.uba.ar - correndo@ksu.edu"
+output: html_document
+---
+
+This code was prepared as a tutorial for potential users of the Modified Arcsine-log Calibration Curve (ALCC) detailed in Correndo et al. (2017). 
+
+<b> Instructions for users </b> <br/>
+
+1. Load your soil test value (STV) and relative yield (RY) data as vectors of a data.frame. <br/>
+
+2. Specify into the function -ALCC()- which vectors correspond to RY and STV. <br/>
+
+3. Specify your relative yield target (e.g. 90%) and desired confidence level (e.g. 0.95 for 1 - alpha(0.05)). Used for the estimation of critical soil test value (CSTV) and lower and upper confidence limits. <br/>
+
+3. Run. <br/>
+
+4. Check results and adjust plot as desired. <br/>
+
+5. Please, refer any question to Adrian Correndo, correndo@agro.uba.ar - correndo@ksu.edu. <br/>
+
+
+<i> Note: RY should be expressed relative to a maximum in order to obtain values bounded at %100. Otherwise, arcsine transformation doesn't work. <br/>
+
+<b> References </b> <br/>
+
+<i> Correndo, A.A., F. Salvagiotti, F.O. García, y F.H. Gutiérrez-Boem. 2017. A modification of the arcsine-log calibration curve for analysing soil test value - relative yield relationships. Crop & Pasture Science 68 (3): 297-304, doi: 10.10171/CP16444 </i> <br/>
+
+
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## Libraries
+```{r warning=F, message=F}
+# Install if needed 
+# install.packages("tidyverse")
+# tidyverse contains "dplyr" for data wrangling and "ggplot2" for creating plots
+library(tidyverse) 
+
+```
+## Data
+```{r}
+
+# Example 1 dataset
+data_1 = data.frame("RY" = c(65,80,85,88,90,94,93,96,97,95,98,100,99,99,100),
+                   "STV" = c(1,2,3,4,5,6,7,8,9,10,11,12,13,14,15))
+
+# Example 2 dataframe. Imported from csv file
+# It can be easily replaced with your own csv file
+data_2 = read.csv(file = "data_test.csv")
+
+
+```
+
+## ALCC function, definition
+```{r warning=FALSE, message=F}
+
+ALCC <- function(RY, STV, target, confidence){
+  n = length(RY) # Sample size
+  df = n - 2 # Degrees of freedom
+  prob = 1-((1-confidence)/1/2) # Probability for t-dist
+  tvalue = qt(p=prob, df = df) # Student-t value
+  arcsine = function(RY)asin(sqrt(RY/100))
+  arc_RY = arcsine(RY) - arcsine(target) # RY transformation (centered to target)
+  ln_STV = log(STV) # STV natural log transformation
+  r = cor(ln_STV, arc_RY) # Pearson correlation (r)
+  p_value = cor.test(ln_STV,arc_RY)$p.value # p-value of r
+  slope = sd(ln_STV)/sd(arc_RY) # SMA slope for ln_STV ~ arc_RY
+  intercept = mean(ln_STV) - (mean(arc_RY)*slope) # Intercept
+  Line = intercept + slope * arc_RY# Fitted ln_STV for observed RY
+  CSTV = exp(intercept) # Critical STV for specified RY-target and confidence (1-alpha)
+  MSE = sum((Line-ln_STV)^2)/df # Mean Square Error of ln_STV
+  SSx = sum((mean(arc_RY)-arc_RY)^2) # Sum of Squares of arc_RY
+  SE_int = sqrt(MSE*((1/n)+ ((mean(arc_RY)^2)/SSx))) # Standard Error intercept
+  CSTV_lower = exp(intercept - (tvalue * SE_int)) # Lower limit of CSTV
+  CSTV_upper = exp(intercept + (tvalue * SE_int)) # Upper limit of CSTV
+  new_RY = seq(min(RY),100, by=0.2) # New RY vector up to %100 to fit curve
+  new_arc_RY = arcsine(new_RY) - arcsine(target) # Transforming new_RY vector
+  fitted_Line = intercept + slope * new_arc_RY# Fitted ln_STV for new_RY
+  fitted_STV = exp(fitted_Line) # Fitted ln_STV for new_RY
+  # Outcome
+  results <- list("Pearson r" = r,
+                  "p_value" = p_value,
+                  "CSTV" = CSTV,
+                  "Lower_limit" = CSTV_lower, "Upper_limit" = CSTV_upper,
+                  "Curve" = list("Fitted_RY" = new_RY, "Fitted_STV" = fitted_STV))
+
+  return(results)
+}
+
+
+```
+
+## Fit example 1
+```{r warning=F, message=F}
+# Fit the ALCC model
+# RY target = 90%, confidence level = 0.95, replace with your desired values
+fit_example_1 = ALCC(RY = data_1$RY,STV = data_1$STV, target=90,confidence = 0.95)
+
+fit_example_1
+
+```
+
+## Plot example 1
+```{r warning=F, message=F}
+# Extracting curve data as a data.frame to plot
+curve_example1 = data.frame("Fitted_STV" = fit_example_1[["Curve"]][["Fitted_STV"]],
+                            "Fitted_RY" = fit_example_1[["Curve"]][["Fitted_RY"]])
+
+# Plot
+data_1 %>% ggplot()+
+  # Points
+  geom_point(aes(x = STV, y = RY), fill = "orange", shape = 21, size = 4, alpha = 0.75)+
+  # Fitted ALCC
+  geom_line(data = curve_example1, aes(x= Fitted_STV, y = Fitted_RY), size = 2)+
+  # Critical value
+  geom_vline(xintercept = fit_example_1$CSTV, col = "red", size = 1.5, linetype = "dashed")+
+  # Confidence limits
+  geom_vline(xintercept = fit_example_1$Lower_limit, col = "red", size = 1, linetype = "dotted")+
+  geom_vline(xintercept = fit_example_1$Upper_limit, col = "red", size = 1, linetype = "dotted")+
+  # Axis titles
+  labs(x = "Soil Test Value (units)", y = "Relative Yield (%)")+
+  theme_bw()+
+  theme()
+
+```
+## Fit example 2
+```{r warning=F, message=F}
+# Fit the ALCC model
+# target = 90, confidence = 0.95, replace with your desired values
+fit_example_2 = ALCC(RY = data_2$RY,STV = data_2$STV, target=90,confidence = 0.95)
+
+fit_example_2
+```
+
+## Plotting example 2
+```{r warning=F, message=F}
+# Extracting curve data as a data.frame to plot
+curve_example2 = data.frame("Fitted_STV" = fit_example_2[["Curve"]][["Fitted_STV"]],
+                            "Fitted_RY" = fit_example_2[["Curve"]][["Fitted_RY"]])
+
+# Plot
+data_2 %>% ggplot()+
+  # Points
+  geom_point(aes(x = STV, y = RY), fill = "#88dbc8", shape = 21, size = 4, alpha = 0.75)+
+  # Fitted ALCC
+  geom_line(data = curve_example2, aes(x= Fitted_STV, y = Fitted_RY), size = 2)+
+  # Critical value
+  geom_vline(xintercept = fit_example_2$CSTV, col = "red", size = 1.5, linetype = "dashed")+
+  # Confidence limits
+  geom_vline(xintercept = fit_example_2$Lower_limit, col = "red", size = 1, linetype = "dotted")+
+  geom_vline(xintercept = fit_example_2$Upper_limit, col = "red", size = 1, linetype = "dotted")+
+  # Axis titles
+  labs(x = "Soil Test Value (units)", y = "Relative Yield (%)")+
+  theme_bw()+
+  theme()
+
+```
+
+
