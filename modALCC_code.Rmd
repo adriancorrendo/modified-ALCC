@@ -82,7 +82,7 @@ data.all = bind_rows(data_1, data_2, data_3, .id = "id") %>%
 
 \newpage
 
-# 3. ALCC function, updated
+# 3. modALCC() function
 ```{r warning=FALSE, message=F}
 
 modALCC <- function(data=NULL, RY, STV, target, confidence){

@@ -83,7 +83,7 @@ data.all = bind_rows(data_1, data_2, data_3, .id = "id") %>%
   tidyr::nest(data = c("STV", "RY"))
 ```
 
-# 3. ALCC function, updated
+# 3. modALCC() function
 
 ``` r
 modALCC <- function(data=NULL, RY, STV, target, confidence){
