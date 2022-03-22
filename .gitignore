@@ -2,3 +2,8 @@
 .Rhistory
 .RData
 .Ruserdata
+Parg/
+*.html
+ALCC_P_arg_code.Rmd
+ALCC_code.Rmd
+ALCC_code.pdf
