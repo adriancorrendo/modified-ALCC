@@ -1,20 +1,22 @@
 ---
 title: "Modified ALCC"
 author: "Adrian A. Correndo"
-date: "03/22/2020"
+date: "03/22/2022"
 output:
   pdf_document: default
   html_document: default
 contact: correndo@agro.uba.ar - correndo@ksu.edu
 ---
 
-This code was prepared as a tutorial for potential users of the Modified Arcsine-log Calibration Curve (ALCC) detailed in Correndo et al. (2017).
+This code was prepared as a tutorial for potential users of the Modified Arcsine-log Calibration Curve (modALCC) detailed in Correndo et al. (2017). <br/>
+
+*Correndo, A.A., Salvagiotti, F., García, F.O. and Gutiérrez-Boem, F.H., 2017. A modification of the arcsine–log calibration curve for analysing soil test value–relative yield relationships. Crop and Pasture Science, 68(3), pp.297-304. https://doi.org/10.1071/CP16444 * <br/>
 
 <b> Instructions for users </b> <br/>
 
 1. Load your soil test value (STV) and relative yield (RY) data as vectors of a data.frame. <br/>
 
-2. Specify into the function -ALCC()- which vectors correspond to RY and STV. <br/>
+2. Specify into the function -modALCC()- which vectors correspond to RY and STV. <br/>
 
 <i> Note: They new update allows to specify "data" argument as optional. <br/>
 
@@ -83,13 +85,7 @@ data.all = bind_rows(data_1, data_2, data_3, .id = "id") %>%
 # 3. ALCC function, updated
 ```{r warning=FALSE, message=F}
 
-ALCC <- function(data=NULL, RY, STV, target, confidence){
-  
-  rlang::eval_tidy(data = data, 
-                   rlang::quo(
-  if (max({{RY}}) > 100) {
-        warning("One or more original RY values exceeded 100%.\nAll RY values greater than 100% have been capped to 100% for arcsine transformation.", call. = FALSE)
-    } ) )
+modALCC <- function(data=NULL, RY, STV, target, confidence){
   
   # Add a function to cap if there are RY values > 100
   ry <- rlang::eval_tidy(data = data, rlang::quo(ifelse({{RY}} > 100, 100, as.double({{RY}})) ))
@@ -114,25 +110,39 @@ ALCC <- function(data=NULL, RY, STV, target, confidence){
   new_arc_RY <- asin(sqrt(new_RY/100)) - asin(sqrt(target/100)) # Transforming new_RY vector
   fitted_Line <- intercept + slope * new_arc_RY # Fitted ln_STV for new_RY
   fitted_STV <- exp(fitted_Line) # Fitted ln_STV for new_RY
-  target <- target
-  confidence <- confidence
-  
+  target <- target # Target RY to show on summary
+  confidence <- confidence # Confidence level to show on summary
+  # Critical STV for RY = 90 & 100
+  arc_ry_100 <- asin(sqrt(ry/100)) - asin(sqrt(1)) 
+  cstv.100 <- exp(mean(ln_STV) - (mean(arc_ry_100)*(sd(ln_STV)/sd(arc_ry_100))))
+  arc_ry_90 <- asin(sqrt(ry/100)) - asin(sqrt(90/100)) 
+  cstv.90 <- exp(mean(ln_STV) - (mean(arc_ry_90)*(sd(ln_STV)/sd(arc_ry_90))))
+  # Count cases with STV > x2 cstv90 and STV > cstv100
+  n.90x2 <- rlang::eval_tidy(data=data, rlang::quo(length(which({{STV}} > (2*cstv.90))) ) )
+  n.100 <- rlang::eval_tidy(data=data, rlang::quo(length(which({{STV}} > cstv.100)) ) )
   # Outcome
-  results <- as.data.frame(list("n" = n,
-                                "r" = r,
-                                "p_value" = p_value,
-                                "target" = target,
-                                "confidence" = confidence,
-                                "CSTV" = CSTV,
-                                "LL" = CSTV_lower,
-                                "UL" = CSTV_upper,
-                                "RY.fitted" = new_RY,
-                                "STV.fitted" = fitted_STV))   %>% 
+  results <- as.data.frame(list("n" = n, "r" = r, "target" = target,
+                    "CSTV" = CSTV,"LL" = CSTV_lower,"UL" = CSTV_upper,
+                    "confidence" = confidence,"p_value" = p_value,
+                    "CSTV90" = cstv.90, "n.90x2" = n.90x2,"CSTV100" = cstv.100,
+                    "n.100" = n.100, "RY.fitted" = new_RY, "STV.fitted" = fitted_STV)) %>% 
     tidyr::nest(Curve = c("RY.fitted", "STV.fitted")) 
-                  
+  
+  # WARNINGS
+  rlang::eval_tidy(data = data, rlang::quo(if (max({{RY}}) > 100) {
+  warning("One or more original RY values exceeded 100%. All RY values greater 
+          than 100% have been capped to 100%.", call. = FALSE) } ) )
+  
+  if (results$n.100 > 0) {warning(paste0(n.100," STV points exceeded the CSTV for 100%.
+  Risk of leverage. You may consider a sensitivity analysis by removing extreme points, 
+  re-run the modALCC(), and check results."), call. = FALSE) }
+  
+  if (results$n.90x2 > 0) {warning(paste0(n.90x2," STV points exceeded two-times (2x) 
+  the CSTV for 90%. Risk of leverage. You may consider a sensitivity analysis by 
+  removing extreme points, re-run the modALCC(), and check results."), call. = FALSE) }
                              
-  return(results)
-}
+  return(results) }
+
 
 
 ```
@@ -141,25 +151,25 @@ ALCC <- function(data=NULL, RY, STV, target, confidence){
 
 # 4. Fit examples
 ## 4.1. Fit ALCC models individually
-```{r warning=T, message=F}
+```{r warning=TRUE, message=TRUE}
 
 # RY target = 90%, confidence level = 0.95, replace with your desired values
 
 # Data 1
 # Using dataframe
-fit_example_1 = ALCC(data = data_1, RY = RY, STV = STV, target=90, confidence = 0.95)
+fit_example_1 = modALCC(data = data_1, RY = RY, STV = STV, target=90, confidence = 0.95)
 # Alternative using the vectors
-# fit_example_1 = ALCC(RY = data_1$RY,STV = data_1$STV, target=90,confidence = 0.95)
+#fit_example_1 = ALCC(RY = data_1$RY,STV = data_1$STV, target=90,confidence = 0.95)
 
 fit_example_1
 
 # Data 2
-fit_example_2 = ALCC(data = data_2, RY = RY, STV = STV, target=90, confidence = 0.95)
+fit_example_2 = modALCC(data = data_2, RY = RY, STV = STV, target=90, confidence = 0.95)
 
 fit_example_2
 
 # Data 3
-fit_example_3 = ALCC(data = data_3, RY = RY, STV = STV, target=90, confidence = 0.95)
+fit_example_3 = modALCC(data = data_3, RY = RY, STV = STV, target=90, confidence = 0.95)
 
 fit_example_3
 
@@ -170,7 +180,7 @@ fit_example_3
 ```{r warning=T, message=F}
 # Run multiple examples at once with map()
 fit_examples = data.all %>%
-  mutate(modALCC = map(data, ~ALCC(RY = .$RY, STV = .$STV, target=90, confidence = 0.95))) %>% 
+  mutate(modALCC = map(data, ~ modALCC(RY = .$RY, STV = .$STV, target=90, confidence = 0.95))) %>% 
   unnest(., cols = c("modALCC"))
 
 head(fit_examples)
@@ -178,7 +188,7 @@ head(fit_examples)
 # Alternative with group_map, this does not required nested data.
 fit_all = bind_rows(data_1, data_2, data_3, .id = "id") %>% 
   group_by(id) %>% 
-  group_map(~ALCC(data = ., RY = RY, STV = STV, target = 90, confidence = 0.95))
+  group_map(~ modALCC(data = ., RY = RY, STV = STV, target = 90, confidence = 0.95))
 
 head(fit_all)
 ```
@@ -187,15 +197,28 @@ head(fit_all)
 
 # 5. Plots
 
+Examples using ggplot <br/>
+
 ## 5.1. Example 1
 ```{r warning=F, message=F}
 # Extracting curve data as a data.frame to plot
 curve_example1 = fit_example_1 %>% unnest(., cols = Curve)
 
 # Plot
-data_1 %>% ggplot()+
+data_1 %>% 
+  # Want to remove leverage points?
+  #dplyr::filter(STV < fit_example_1$CSTV100) %>% 
+  #dplyr::filter(STV < 2*fit_example_1$CSTV90) %>% 
+  ggplot()+
   # Points
   geom_point(aes(x = STV, y = RY), fill = "orange", shape = 21, size = 4, alpha = 0.75)+
+  # Highlight potential leverage points >2xCSTV90
+  geom_point(data = data_1 %>% dplyr::filter(STV > 2*fit_example_1$CSTV90),
+             aes(x = STV, y = RY, shape = ">2xCSTV90"), col = "dark red", size = 4, alpha = 1)+
+  # Highlight potential leverage points >2xCSTV90
+  #geom_point(data = data_1 %>% dplyr::filter(STV > fit_example_1$CSTV100),
+   #          aes(x = STV, y = RY, shape = ">CSTV100"), col = "dark red", size = 4, alpha = 1)+
+  scale_shape_manual(name = "", values = c(7,10))+
   # Fitted ALCC
   geom_line(data = curve_example1, aes(x= STV.fitted, y = RY.fitted), size = 2)+
   # Critical value
@@ -229,8 +252,18 @@ curve_example2 = fit_example_2 %>% unnest(., cols = Curve)
 
 # Plot
 data_2 %>% ggplot()+
+  # Want to remove leverage points?
+  #dplyr::filter(STV < fit_example_2$CSTV100) %>% 
+  #dplyr::filter(STV < 2*fit_example_2$CSTV90) %>% 
   # Points
   geom_point(aes(x = STV, y = RY), fill = "#88dbc8", shape = 21, size = 4, alpha = 0.75)+
+  # Highlight potential leverage points >2xCSTV90
+  geom_point(data = data_2 %>% dplyr::filter(STV > 2*fit_example_2$CSTV90),
+             aes(x = STV, y = RY, shape = ">2xCSTV90"), col = "dark red", size = 4, alpha = 1)+
+  # Highlight potential leverage points >CSTV100
+  geom_point(data = data_2 %>% dplyr::filter(STV > fit_example_2$CSTV100),
+             aes(x = STV, y = RY, shape = ">CSTV100"), col = "dark red", size = 4, alpha = 1)+
+  scale_shape_manual(name = "", values = c(7,10))+
   # Fitted ALCC
   geom_line(data = curve_example2, aes(x= STV.fitted, y = RY.fitted), size = 2)+
   # Critical value
@@ -523,7 +556,8 @@ alcc.rev <- function(data,
             target = 100,
             confidence = confidence
         )
-    
+    # AC: Added a small note
+    # identify CSTV for 100%
     cstv_100 <<- unique(stage_1$cstv)
     
     # AC: Added a small note
@@ -738,10 +772,10 @@ alcc_plot.rev <- function(data,
   #if_else(remove.leverage == TRUE,
   #"Red points > CSTV90 * 2 excluded from model",
   #"Red points > CSTV100 excluded from model. Yellow points > CSTV90 * 2 not excluded."),
-  case_when(remove.leverage == "none" ~ "No points excluded from model. Purple points (>CSTV100)",
-            remove.leverage == "cstv100" ~ "Red points (STV > CSTV100) were excluded from model",
-            remove.leverage == "cstv90_2x" ~ "Red points (STV > 2*CSTV90) were excluded from model"),
-                "\nVertical dotted lines show lower and upper confidence limits"
+  case_when(remove.leverage == "none" ~ "No points excluded from model. Purple points (>CSTV100).",
+            remove.leverage == "cstv100" ~ "Red points (STV > CSTV100) were excluded from model.",
+            remove.leverage == "cstv90_2x" ~ "Red points (STV > 2*CSTV90) were excluded from model."),
+                "\nVertical dotted lines show lower and upper confidence limits."
             )
         )
 }
@@ -755,7 +789,7 @@ alcc_plot.rev <- function(data,
 
 For the cotton dataset, Austin's Code using alcc() produces: <br/>
 
- i. different cstv, lower & upper limits when compared to Adrian's ALCC() and the reference (SMA regression). This issue is nothing wrong with formulae but a result of using a dataset that presents points with STV > cstv100, since the alcc() removes those points by default, while Adrian's ALCC() does not, as I prefer to leave this decision up to the user. <br/>
+ i. different cstv, lower & upper limits when compared to Adrian's modALCC() and the reference (SMA regression). This issue is nothing wrong with formulae but a result of using a dataset that presents points with STV > cstv100, since the alcc() removes those points by default, while Adrian's modALCC() does not, as I prefer to leave this decision up to the user. <br/>
  
  ii. wrong p=values, since it uses the student-t one instead of the pvalue to test correlation significance (used by SMA regression). <br/>
 
@@ -775,7 +809,7 @@ cotton <- tibble(stk = agridat::cate.potassium$potassium,
 ### CODES COMPARISON
 
 # Adrian's
-ALCC(data = cotton, RY = ry, STV = stk, target=90, confidence = 0.95)
+modALCC(data = cotton, RY = ry, STV = stk, target=90, confidence = 0.95)
 
 # Austin's, sma = TRUE
 # Check that even stating remove2x = FALSE it always print "remove2x = TRUE" on the summary table.
@@ -798,7 +832,7 @@ alcc(cotton, soil_test = stk, ry = ry, sufficiency = 90,
 # NOW COMPARE TO MY REVISED VERSION of alcc (alcc.rev)
 
 # Adrian's
-ALCC(data = cotton, RY = ry, STV = stk, target=90, confidence = 0.95)
+modALCC(data = cotton, RY = ry, STV = stk, target=90, confidence = 0.95)
 
 # Revised alcc functions
 alcc.rev(cotton, stv = stk, ry = ry, target = 90, 
@@ -847,14 +881,14 @@ sma.cotton[["pval"]][[1]]
 
 ## 7.2. Other examples
 
-Data_1: The alcc() from Austin works the same than Adrian's ALCC() and Spreadsheet version. <br/>
+Data_1: The alcc() from Austin works the same than Adrian's modALCC() and Spreadsheet version. <br/>
 
 Data_2: Austin's original alcc() code fails with data_2 due to an issue with the "if_else()" used to cap RY values. The function needs to have specified the FALSE statement as.double(), otherwise it may result problematic with some datasets loaded from csv files (as data_2). 
 
 ```{r}
 
 # Adrian's
-fit_example_1 = ALCC(data = data_1, RY = RY, STV = STV, target=90, confidence = 0.95)
+fit_example_1 = modALCC(data = data_1, RY = RY, STV = STV, target=90, confidence = 0.95)
 fit_example_1
 
 # Austin's
@@ -865,14 +899,18 @@ alcc(data_1, soil_test = STV, ry = RY, sufficiency = 90,
 alcc.rev(data_1, stv = STV, ry = RY, target = 90, 
      confidence = 95, summary = T, remove.leverage = "none")
 
+# plot
+alcc_plot.rev(data_1, stv = STV, ry = RY, target = 90, 
+     confidence = 95, remove.leverage = "cstv90_2x")
+
 
 # Using dataframe
 
 # Alternative using the vectors
-# fit_example_1 = ALCC(RY = data_1$RY,STV = data_1$STV, target=90,confidence = 0.95)
+# fit_example_1 = modALCC(Y = data_1$RY,STV = data_1$STV, target=90,confidence = 0.95)
 
 # Adrian's
-fit_example_2 = ALCC(data = data_2, RY = RY, STV = STV, target=90, confidence = 0.95)
+fit_example_2 = modALCC(data = data_2, RY = RY, STV = STV, target=90, confidence = 0.95)
 fit_example_2
 
 # Revised alcc.rev
@@ -899,8 +937,6 @@ alcc_plot.rev(data_2, stv = STV, ry = RY, target = 90,
 
 
 # Austin's original alcc() fails with data_2
-# Austin's code fails due to issue with the if_else function to cap RY values. 
-# For some datasets loaded from csv files, the function needs to have specified the FALSE statement as.double()
 # alcc(data_2, soil_test = STV, ry = RY, sufficiency = 90, confidence = 95, summary = T, remove2x = FALSE, sma = TRUE)
 
 
@@ -910,8 +946,8 @@ alcc_plot.rev(data_2, stv = STV, ry = RY, target = 90,
 
 ## 7.3. Extra example data_3
 
-Data_3: Austin's alcc() does not produce the same results than the ALCC() or the Spreadsheet version.
-Again, this is related to the fact that Austin's alcc() always remove points STV > CSTV100 when present, so it produces different results than Adrian's ALCC(). <br/>
+Data_3: Austin's alcc() does not produce the same results than the modALCC() or the Spreadsheet version.
+Again, this is related to the fact that Austin's alcc() always remove points STV > CSTV100 when present, so it produces different results than Adrian's modALCC(). <br/>
 
 Using the Adrian's revised alcc.rev() functions, Austin's alcc() is equivalent to use the alcc.rev(remove.leverage = 'cstv100').  
 
@@ -920,8 +956,8 @@ Using the Adrian's revised alcc.rev() functions, Austin's alcc() is equivalent t
 # Example 3 dataframe. Imported from xlsx file
 data_3 = readxl::read_xlsx(path ="data_3.xlsx", sheet = 1)
 
-# Adrian's ALCC()
-ALCC(data = data_3, RY = RY, STV = STV, target=90, confidence = 0.95)
+# Adrian's modALCC()
+modALCC(data = data_3, RY = RY, STV = STV, target=90, confidence = 0.95)
 
 # Austin's alcc()
 alcc(data_3, soil_test = STV, ry = RY, sufficiency = 90, 
@@ -937,6 +973,12 @@ alcc.rev(data_3, stv = STV, ry = RY, target = 90,
 alcc.rev(data_3, stv = STV, ry = RY, target = 90, 
      confidence = 95, summary = T, remove.leverage = "cstv90_2x")
 
+
+# plot
+alcc_plot.rev(data_3, stv = STV, ry = RY, target = 90, 
+     confidence = 95, remove.leverage = "none")
+alcc_plot.rev(data_3, stv = STV, ry = RY, target = 90, 
+     confidence = 95, remove.leverage = "cstv100")
 
 ```
 
