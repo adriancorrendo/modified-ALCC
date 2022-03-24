@@ -2,9 +2,7 @@
 title: "Modified ALCC"
 author: "Adrian A. Correndo"
 date: "03/24/2022"
-output:
-  pdf_document: default
-  html_document: default
+output: github_document
 contact: correndo@agro.uba.ar - correndo@ksu.edu
 ---
 
