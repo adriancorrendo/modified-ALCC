@@ -10,7 +10,6 @@ contact: correndo@agro.uba.ar - correndo@ksu.edu
 
 This code was prepared as a tutorial for potential users of the Modified Arcsine-log Calibration Curve (modALCC) detailed in Correndo et al. (2017). <br/>
 
-*Correndo, A.A., Salvagiotti, F., García, F.O. and Gutiérrez-Boem, F.H., 2017. A modification of the arcsine–log calibration curve for analysing soil test value–relative yield relationships. Crop and Pasture Science, 68(3), pp.297-304. https://doi.org/10.1071/CP16444 * <br/>
 
 <b> Instructions for users </b> <br/>
 
@@ -18,13 +17,13 @@ This code was prepared as a tutorial for potential users of the Modified Arcsine
 
 2. Specify the following arguments into the function -modALCC()-: <br/>
 
-(i) 'data' (optional), <br/>
+  (i). 'data' (optional), <br/>
 
-(ii) soil test value 'STV' and relative yield 'RY', <br/>
+  (ii). soil test value 'STV' and relative yield 'RY', <br/>
 
-(iii) 'target' of relative yield (e.g. 90%), <br/>
+  (iii). 'target' of relative yield (e.g. 90%), <br/>
 
-(iv) desired confidence level (e.g. 0.95 for 1 - alpha(0.05)). Used for the estimation of critical soil test value (CSTV) lower and upper limits. <br/>
+  (iv). desired confidence level (e.g. 0.95 for 1 - alpha(0.05)). Used for the estimation of critical soil test value (CSTV) lower and upper limits. <br/>
 
 3. Run and check results in a data.frame. <br/>
 
@@ -34,14 +33,11 @@ This code was prepared as a tutorial for potential users of the Modified Arcsine
 
 <i> Please, refer any question to Adrian Correndo, correndo@agro.uba.ar - correndo@ksu.edu. <i> <br/>
 
-
 <i> Note: RY should be expressed relative to a maximum in order to obtain values bounded at %100. Otherwise, arcsine transformation doesn't work. If RY values > 100% are found, the function will cap them up to 100% and will display a warning about this. <br/>
 
 <b> References </b> <br/>
 
-<i> Correndo, A.A., F. Salvagiotti, F.O. García, y F.H. Gutiérrez-Boem. 2017. A modification of the arcsine-log calibration curve for analysing soil test value - relative yield relationships. Crop & Pasture Science 68 (3): 297-304, doi: 10.10171/CP16444 </i> <br/>
-
-
+*Correndo, A.A., Salvagiotti, F., García, F.O. and Gutiérrez-Boem, F.H., 2017. A modification of the arcsine–log calibration curve for analysing soil test value–relative yield relationships. Crop and Pasture Science, 68(3), pp.297-304. https://doi.org/10.1071/CP16444 * <br/>
 
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = TRUE)

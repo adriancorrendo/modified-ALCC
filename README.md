@@ -7,11 +7,6 @@ This code was prepared as a tutorial for potential users of the Modified
 Arcsine-log Calibration Curve (modALCC) detailed in Correndo et
 al. (2017). <br/>
 
-*Correndo, A.A., Salvagiotti, F., García, F.O. and Gutiérrez-Boem, F.H.,
-2017. A modification of the arcsine–log calibration curve for analysing
-soil test value–relative yield relationships. Crop and Pasture Science,
-68(3), pp.297-304. <https://doi.org/10.1071/CP16444> * <br/>
-
 <b> Instructions for users </b> <br/>
 
 1.  Load your dataframe with soil test value (STV) and relative yield
@@ -19,19 +14,15 @@ soil test value–relative yield relationships. Crop and Pasture Science,
 
 2.  Specify the following arguments into the function -modALCC()-: <br/>
 
-<!-- -->
+(i). `data` (optional), <br/>
 
-1)  ‘data’ (optional), <br/>
+(ii). soil test value `STV` and relative yield `RY`, <br/>
 
-2)  soil test value ‘STV’ and relative yield ‘RY’, <br/>
+(iii). `target` of relative yield (e.g. 90%), <br/>
 
-3)  ‘target’ of relative yield (e.g. 90%), <br/>
-
-4)  desired confidence level (e.g. 0.95 for 1 - alpha(0.05)). Used for
-    the estimation of critical soil test value (CSTV) lower and upper
-    limits. <br/>
-
-<!-- -->
+(iv). desired `confidence` level (e.g. 0.95 for 1 - alpha(0.05)). Used
+for the estimation of critical soil test value (CSTV) lower and upper
+limits. <br/>
 
 3.  Run and check results in a data.frame. <br/>
 
@@ -50,10 +41,10 @@ work. If RY values \> 100% are found, the function will cap them up to
 
 <b> References </b> <br/>
 
-<i> Correndo, A.A., F. Salvagiotti, F.O. García, y F.H. Gutiérrez-Boem.
-2017. A modification of the arcsine-log calibration curve for analysing
-soil test value - relative yield relationships. Crop & Pasture Science
-68 (3): 297-304, doi: 10.10171/CP16444 </i> <br/>
+*Correndo, A.A., Salvagiotti, F., García, F.O. and Gutiérrez-Boem, F.H.,
+2017. A modification of the arcsine–log calibration curve for analysing
+soil test value–relative yield relationships. Crop and Pasture Science,
+68(3), pp.297-304. <https://doi.org/10.1071/CP16444> * <br/>
 
 ### Last update: 03-24-2022
 
